@@ -21,9 +21,7 @@ package org.apache.maven.plugins.dependency.fromDependencies;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
@@ -33,6 +31,7 @@ import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.dependency.AbstractDependencyMojoTestCase;
+import org.apache.maven.plugins.dependency.fromConfiguration.ArtifactItem;
 import org.apache.maven.plugins.dependency.testUtils.DependencyArtifactStubFactory;
 import org.apache.maven.plugins.dependency.utils.DependencyUtil;
 import org.apache.maven.plugins.dependency.utils.markers.DefaultFileMarkerHandler;
@@ -598,6 +597,27 @@ public class TestUnpackDependenciesMojo
         catch ( MojoExecutionException e )
         {
         }
+    }
+
+    public void testNotOverwriteFiles()
+            throws MojoExecutionException, InterruptedException, IOException, MojoFailureException
+    {
+        //stubFactory.setCreateFiles( true );
+        Set<Artifact> artifacts = new HashSet<>();
+        Artifact artifact = stubFactory.getSnapshotArtifact();
+        assertTrue( artifact.getFile().setLastModified( System.currentTimeMillis() - 2000 ) );
+
+        artifacts.add( artifact );
+
+        mojo.getProject().setArtifacts( artifacts );
+        mojo.getProject().setDependencyArtifacts( artifacts );
+        
+        mojo.overwriteFiles = false;
+
+        mojo.execute();
+
+        assertUnpacked( artifact, false );
+
     }
 
     public File getUnpackedFile( Artifact artifact )

@@ -221,7 +221,7 @@ public abstract class AbstractDependencyMojo
     protected void unpack( Artifact artifact, File location, String includes, String excludes, String encoding,
                            FileMapper[] fileMappers ) throws MojoExecutionException
     {
-        unpack( artifact, artifact.getType(), location, includes, excludes, encoding, fileMappers );
+        unpack( artifact, artifact.getType(), location, includes, excludes, encoding, fileMappers, false );
     }
 
     /**
@@ -236,7 +236,7 @@ public abstract class AbstractDependencyMojo
      * @throws MojoExecutionException in case of an error.
      */
     protected void unpack( Artifact artifact, String type, File location, String includes, String excludes,
-                           String encoding, FileMapper[] fileMappers )
+                           String encoding, FileMapper[] fileMappers, boolean overwriteFiles )
         throws MojoExecutionException
     {
         File file = artifact.getFile();
@@ -282,6 +282,8 @@ public abstract class AbstractDependencyMojo
             unArchiver.setSourceFile( file );
 
             unArchiver.setDestDirectory( location );
+
+            unArchiver.setOverwrite(overwriteFiles);
 
             if ( StringUtils.isNotEmpty( excludes ) || StringUtils.isNotEmpty( includes ) )
             {

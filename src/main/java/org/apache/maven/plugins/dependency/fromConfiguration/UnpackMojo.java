@@ -89,6 +89,15 @@ public class UnpackMojo
     private String artifact;
 
     /**
+     * Indicate if we should overwrite files in output folder. Default is true.
+     * Unlike overWriteIfNewer, overWriteReleases, overWriteSnapshots that is functioning on artifact scope,
+     * this property take effect in file scope.
+     * Turning this off means NEVER override.
+     */
+    @Parameter( property = "overwriteFiles", defaultValue = "true" )
+    protected boolean overwriteFiles = true;
+
+    /**
      * Main entry into mojo. This method gets the ArtifactItems and iterates through each one passing it to
      * unpackArtifact.
      *
@@ -136,7 +145,7 @@ public class UnpackMojo
 
         unpack( artifactItem.getArtifact(), artifactItem.getType(), artifactItem.getOutputDirectory(),
                 artifactItem.getIncludes(), artifactItem.getExcludes(), artifactItem.getEncoding(),
-                artifactItem.getFileMappers() );
+                artifactItem.getFileMappers(), overwriteFiles );
         handler.setMarker();
     }
 

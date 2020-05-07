@@ -83,6 +83,15 @@ public class UnpackDependenciesMojo
     private FileMapper[] fileMappers;
 
     /**
+     * Indicate if we should overwrite files in output folder. Default is true.
+     * Unlike overWriteIfNewer, overWriteReleases, overWriteSnapshots that is functioning on artifact scope,
+     * this property take effect in file scope.
+     * Turning this off means NEVER override.
+     */
+    @Parameter( property = "overwriteFiles", defaultValue = "true" )
+    protected boolean overwriteFiles = true;
+
+    /**
      * Main entry into mojo. This method gets the dependencies and iterates through each one passing it to
      * DependencyUtil.unpackFile().
      *
@@ -101,7 +110,7 @@ public class UnpackDependenciesMojo
             File destDir = DependencyUtil.getFormattedOutputDirectory( useSubDirectoryPerScope, useSubDirectoryPerType,
                                                                   useSubDirectoryPerArtifact, useRepositoryLayout,
                                                                   stripVersion, outputDirectory, artifact );
-            unpack( artifact, destDir, getIncludes(), getExcludes(), getEncoding(), getFileMappers() );
+            unpack( artifact, artifact.getType(), destDir, getIncludes(), getExcludes(), getEncoding(), getFileMappers(), overwriteFiles );
             DefaultFileMarkerHandler handler = new DefaultFileMarkerHandler( artifact, this.markersDirectory );
             handler.setMarker();
         }
