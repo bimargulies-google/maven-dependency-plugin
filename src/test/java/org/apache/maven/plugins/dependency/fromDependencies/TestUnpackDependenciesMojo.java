@@ -31,12 +31,12 @@ import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.dependency.AbstractDependencyMojoTestCase;
-import org.apache.maven.plugins.dependency.fromConfiguration.ArtifactItem;
 import org.apache.maven.plugins.dependency.testUtils.DependencyArtifactStubFactory;
 import org.apache.maven.plugins.dependency.utils.DependencyUtil;
 import org.apache.maven.plugins.dependency.utils.markers.DefaultFileMarkerHandler;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.StringUtils;
+import org.junit.Assert;
 import org.sonatype.aether.impl.internal.SimpleLocalRepositoryManager;
 import org.sonatype.aether.util.DefaultRepositorySystemSession;
 
@@ -602,22 +602,18 @@ public class TestUnpackDependenciesMojo
     public void testNotOverwriteFiles()
             throws MojoExecutionException, InterruptedException, IOException, MojoFailureException
     {
-        //stubFactory.setCreateFiles( true );
-        Set<Artifact> artifacts = new HashSet<>();
-        Artifact artifact = stubFactory.getSnapshotArtifact();
-        assertTrue( artifact.getFile().setLastModified( System.currentTimeMillis() - 2000 ) );
-
-        artifacts.add( artifact );
-
-        mojo.getProject().setArtifacts( artifacts );
-        mojo.getProject().setDependencyArtifacts( artifacts );
-        
-        mojo.overwriteFiles = false;
-
+        // The overwriteFiles flag is on by default, and one sets it to false to prevent overwrites.
+        // Put exactly one release artifact into place.
+        Artifact theArtifact = stubFactory.getReleaseArtifact();
+        mojo.getProject().setArtifacts( Collections.singleton( theArtifact) );
+        mojo.getProject().setDependencyArtifacts( new HashSet<Artifact>() );
+        // Run the mojo to unpack it.
         mojo.execute();
 
-        assertUnpacked( artifact, false );
-
+        mojo.overWriteReleases = true; // enable overwrites in general.
+        mojo.overwriteFiles = false;   // turn off the flag and expect it to prevent overwrites.
+        // Run the mojo again and do not expect an overwrite.
+        assertUnpacked( theArtifact, false );
     }
 
     public File getUnpackedFile( Artifact artifact )
@@ -637,6 +633,15 @@ public class TestUnpackDependenciesMojo
         return new DefaultFileMarkerHandler( artifact, mojo.getMarkersDirectory() );
     }
 
+    /**
+     * Run the mojo as currently configured, and check to see if some artifact is (or isn't)
+     * newly unpacked. Unpack target must exist before this is called.
+     * @param artifact  the artifact
+     * @param overWrite whether the correct result is to overwrite.
+     * @throws InterruptedException
+     * @throws MojoExecutionException
+     * @throws MojoFailureException
+     */
     public void assertUnpacked( Artifact artifact, boolean overWrite )
         throws InterruptedException, MojoExecutionException, MojoFailureException
     {
@@ -656,7 +661,8 @@ public class TestUnpackDependenciesMojo
 
         if ( overWrite )
         {
-            assertTrue( time != unpackedFile.lastModified() );
+            Assert.assertNotEquals( "Time wasn't changed to show overwrite",
+                time, unpackedFile.lastModified() );
         }
         else
         {

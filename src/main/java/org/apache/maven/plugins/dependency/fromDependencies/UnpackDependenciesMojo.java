@@ -84,7 +84,7 @@ public class UnpackDependenciesMojo
 
     /**
      * Indicate if we should overwrite files in output folder. Default is true.
-     * Unlike overWriteIfNewer, overWriteReleases, overWriteSnapshots that is functioning on artifact scope,
+     * Unlike overWriteIfNewer, overWriteReleases, overWriteSnapshots that function at artifact scope,
      * this property take effect in file scope.
      * Turning this off means NEVER override.
      */
@@ -124,8 +124,12 @@ public class UnpackDependenciesMojo
     @Override
     protected ArtifactsFilter getMarkedArtifactFilter()
     {
-        return new MarkerFileFilter( this.overWriteReleases, this.overWriteSnapshots, this.overWriteIfNewer,
-                                     new DefaultFileMarkerHandler( this.markersDirectory ) );
+        // The overwriteFiles flag exists to forbid any overwrites, regardless of the other
+        // flags.
+        return new MarkerFileFilter( this.overWriteReleases && this.overwriteFiles,
+            this.overWriteSnapshots && this.overwriteFiles,
+            this.overWriteIfNewer && this.overwriteFiles,
+            new DefaultFileMarkerHandler( this.markersDirectory ) );
     }
 
     /**
