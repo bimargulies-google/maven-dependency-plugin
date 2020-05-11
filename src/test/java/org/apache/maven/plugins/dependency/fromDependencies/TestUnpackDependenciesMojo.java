@@ -606,7 +606,10 @@ public class TestUnpackDependenciesMojo
         // Put exactly one release artifact into place.
         Artifact theArtifact = stubFactory.getReleaseArtifact();
         mojo.getProject().setArtifacts( Collections.singleton( theArtifact) );
-        mojo.getProject().setDependencyArtifacts( new HashSet<Artifact>() );
+        Set<Artifact> artifacts = new HashSet<>();
+        artifacts.add(theArtifact);
+
+        mojo.getProject().setDependencyArtifacts( artifacts );
         // Run the mojo to unpack it.
         mojo.execute();
 
@@ -614,6 +617,67 @@ public class TestUnpackDependenciesMojo
         mojo.overwriteFiles = false;   // turn off the flag and expect it to prevent overwrites.
         // Run the mojo again and do not expect an overwrite.
         assertUnpacked( theArtifact, false );
+    }
+
+    public void testOverwriteFiles()
+            throws MojoExecutionException, InterruptedException, IOException, MojoFailureException
+    {
+        // The overwriteFiles flag is on by default, and one sets it to false to prevent overwrites.
+        // Put exactly one release artifact into place.
+        Artifact theArtifact = stubFactory.getReleaseArtifact();
+        mojo.getProject().setArtifacts( Collections.singleton( theArtifact) );
+        Set<Artifact> artifacts = new HashSet<>();
+        artifacts.add(theArtifact);
+
+
+        mojo.getProject().setDependencyArtifacts( artifacts );
+        // Run the mojo to unpack it.
+        mojo.execute();
+
+        mojo.overWriteReleases = true; // turn on the overwrite release flag
+        mojo.overwriteFiles = true;   // turn on the flag to overwrite
+        // Run the mojo again and expect an overwrite.
+        assertUnpacked( theArtifact, true );
+    }
+
+    public void testRecreateOverwrite()
+            throws MojoExecutionException, InterruptedException, IOException, MojoFailureException
+    {
+        Artifact a1 = stubFactory.createArtifact("g", "release", "1.0", "compile", "jar", "one");
+        Artifact a2 = stubFactory.createArtifact("g", "release", "1.0", "compile", "jar", "two");
+
+        Set<Artifact> artifacts = new HashSet<>();
+        artifacts.add(a1);
+        artifacts.add(a2);
+
+        mojo.getProject().setArtifacts(artifacts);
+        mojo.getProject().setDependencyArtifacts( artifacts );
+
+        mojo.execute();
+
+        // set the mojo to not overwrite
+        mojo.overWriteReleases = true;
+        mojo.overwriteFiles = false;
+
+
+        File unpackedFile = getUnpackedFile( a1 );
+
+        // obtain the initial time the file for artifact 1 was modified
+        long time = unpackedFile.lastModified();
+
+        // get the file associated with the second artifact and delete it
+        getUnpackedFile(a2).delete();
+
+        assertEquals( time, getUnpackedFile(a1).lastModified() );
+        mojo.execute(); // expect an overwrite
+
+        // the file associated with the second artifact should have been recreated after mojo.execute() so
+        // check that it now exists; will throw an error if not
+        //getUnpackedFile(a2);
+
+        assertEquals( time, getUnpackedFile(a1).lastModified() );
+
+
     }
 
     public File getUnpackedFile( Artifact artifact )

@@ -498,10 +498,12 @@ public class TestUnpackMojo
         List<ArtifactItem> list = new ArrayList<>( 1 );
         list.add( item );
         mojo.setArtifactItems( list );
+        mojo.execute();
 
         mojo.setOverWriteIfNewer( false );
         mojo.setOverWriteReleases( true );
-        mojo.execute();
+        mojo.overwriteFiles = true;
+
 
         assertUnpacked( item, true );
     }
