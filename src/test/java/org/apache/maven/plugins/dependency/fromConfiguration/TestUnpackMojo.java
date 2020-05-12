@@ -495,8 +495,7 @@ public class TestUnpackMojo
 
         ArtifactItem item = new ArtifactItem( createArtifact( release ) );
 
-        List<ArtifactItem> list = new ArrayList<>( 1 );
-        list.add( item );
+        List<ArtifactItem> list = new ArrayList<ArtifactItem>( Collections.singleton(item) );
         mojo.setArtifactItems( list );
         mojo.execute();
 

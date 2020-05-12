@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+import net.bytebuddy.implementation.bytecode.Throw;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.resolver.filter.ScopeArtifactFilter;
@@ -606,8 +607,7 @@ public class TestUnpackDependenciesMojo
         // Put exactly one release artifact into place.
         Artifact theArtifact = stubFactory.getReleaseArtifact();
         mojo.getProject().setArtifacts( Collections.singleton( theArtifact) );
-        Set<Artifact> artifacts = new HashSet<>();
-        artifacts.add(theArtifact);
+        Set<Artifact> artifacts = new HashSet<>(Collections.singleton(theArtifact));
 
         mojo.getProject().setDependencyArtifacts( artifacts );
         // Run the mojo to unpack it.
@@ -626,8 +626,7 @@ public class TestUnpackDependenciesMojo
         // Put exactly one release artifact into place.
         Artifact theArtifact = stubFactory.getReleaseArtifact();
         mojo.getProject().setArtifacts( Collections.singleton( theArtifact) );
-        Set<Artifact> artifacts = new HashSet<>();
-        artifacts.add(theArtifact);
+        Set<Artifact> artifacts = new HashSet<>( Collections.singleton( theArtifact ) );
 
 
         mojo.getProject().setDependencyArtifacts( artifacts );
@@ -643,14 +642,14 @@ public class TestUnpackDependenciesMojo
     public void testRecreateOverwrite()
             throws MojoExecutionException, InterruptedException, IOException, MojoFailureException
     {
-        Artifact a1 = stubFactory.createArtifact("g", "release", "1.0", "compile", "jar", "one");
-        Artifact a2 = stubFactory.createArtifact("g", "release", "1.0", "compile", "jar", "two");
+        Artifact a1 = stubFactory.createArtifact("g", "a", "1.0", "compile", "jar", "one");
+        Artifact a2 = stubFactory.createArtifact("g", "a", "1.0", "compile", "jar", "two");
 
         Set<Artifact> artifacts = new HashSet<>();
         artifacts.add(a1);
         artifacts.add(a2);
 
-        mojo.getProject().setArtifacts(artifacts);
+        mojo.getProject().setArtifacts( artifacts );
         mojo.getProject().setDependencyArtifacts( artifacts );
 
         mojo.execute();
@@ -666,18 +665,30 @@ public class TestUnpackDependenciesMojo
         long time = unpackedFile.lastModified();
 
         // get the file associated with the second artifact and delete it
-        getUnpackedFile(a2).delete();
+        getUnpackedFile( a2 ).delete();
 
         assertEquals( time, getUnpackedFile(a1).lastModified() );
         mojo.execute(); // expect an overwrite
 
-        // the file associated with the second artifact should have been recreated after mojo.execute() so
-        // check that it now exists; will throw an error if not
-        //getUnpackedFile(a2);
+        // with overwriteFiles being false, this prevents the file associated with artifact a2 from being
+        // recreated during mojo.execute(). Verify that is no longer exists
+        assertFalse(getUnpackedFileWithoutAssert( a2 ).exists());
 
-        assertEquals( time, getUnpackedFile(a1).lastModified() );
+        assertEquals( time, getUnpackedFile( a1 ).lastModified() );
 
 
+    }
+
+    // temporary function to retrieve file without asserting its existence
+    public File getUnpackedFileWithoutAssert( Artifact artifact )
+    {
+        File destDir =
+                DependencyUtil.getFormattedOutputDirectory( mojo.isUseSubDirectoryPerScope(),
+                        mojo.isUseSubDirectoryPerType(),
+                        mojo.isUseSubDirectoryPerArtifact(), mojo.useRepositoryLayout,
+                        mojo.stripVersion, mojo.getOutputDirectory(), artifact );
+        File unpacked = new File( destDir, DependencyArtifactStubFactory.getUnpackableFileName( artifact ) );
+        return unpacked;
     }
 
     public File getUnpackedFile( Artifact artifact )
