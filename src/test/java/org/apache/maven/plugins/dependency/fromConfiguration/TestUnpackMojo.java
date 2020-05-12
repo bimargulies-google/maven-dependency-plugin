@@ -682,9 +682,14 @@ public class TestUnpackMojo
 
     public File getUnpackedFile( ArtifactItem item )
     {
-        File unpackedFile = new File( item.getOutputDirectory(),
-                                      DependencyArtifactStubFactory.getUnpackableFileName( item.getArtifact() ) );
-
+        // No one updated getUpackableFileName to deal with the change to ArtifactItem
+        // which replaces "" with null for values such as the classifier. This
+        // terrible business. This may be more widespread, and this ridiculous string
+        // substitutition works around.
+        String purportedFileName = DependencyArtifactStubFactory
+            .getUnpackableFileName(item.getArtifact());
+        String fileName = purportedFileName.replace( "-null-", "--" );
+        File unpackedFile = new File( item.getOutputDirectory(), fileName);
         assertTrue( unpackedFile.exists() );
         return unpackedFile;
 
