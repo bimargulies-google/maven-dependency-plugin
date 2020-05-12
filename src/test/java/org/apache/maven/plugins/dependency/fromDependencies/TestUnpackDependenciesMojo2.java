@@ -31,6 +31,7 @@ import org.apache.maven.project.MavenProject;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -226,6 +227,55 @@ public class TestUnpackDependenciesMojo2
         assertTrue( time != unpackedFile.lastModified() );
 
         System.gc();
+    }
+
+    public void testNotOverWriteFiles()
+            throws MojoExecutionException, InterruptedException, IOException, MojoFailureException
+    {
+        Artifact release = stubFactory.getReleaseArtifact();
+        Set<Artifact> artifacts = new HashSet<>(Collections.singleton( release ) );
+        release.getFile().setLastModified( System.currentTimeMillis() - 2000 );
+
+        mojo.getProject().setArtifacts( artifacts );
+        mojo.getProject().setDependencyArtifacts( artifacts );
+        File manifest = createExistingManifestFile();
+
+        mojo.overwriteFiles = false;
+        mojo.execute();
+
+        long time = setLastModified( manifest );
+
+        mojo.overwriteFiles = false;
+        mojo.execute();
+
+        assertTrue( time == manifest.lastModified() );
+
+        File unpackedFile = getUnpackedFile( release );
+        assertTrue( unpackedFile.exists() );
+
+    }
+
+    private File createExistingManifestFile() throws IOException
+    {
+        // Simulate the case meta-inf is already there.
+        File metaInf = new File(mojo.outputDirectory, "META-INF");
+        assertTrue(metaInf.mkdirs());
+        File manifest = new File(metaInf, "MANIFEST.MF");
+        manifest.createNewFile();
+        assertTrue(manifest.exists());
+        return manifest;
+    }
+
+    private long setLastModified(final File manifest) throws InterruptedException
+    {
+        // round down to the last second
+        long time = System.currentTimeMillis();
+        time = time - ( time % 1000 );
+        manifest.setLastModified( time );
+        // wait at least a second for filesystems that only record to the
+        // nearest second.
+        Thread.sleep(1000);
+        return time;
     }
 
     public void assertUnpacked( Artifact artifact, boolean overWrite )

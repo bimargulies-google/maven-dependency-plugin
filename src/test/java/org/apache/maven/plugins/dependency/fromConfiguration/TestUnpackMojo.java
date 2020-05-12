@@ -24,6 +24,7 @@ import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.dependency.AbstractDependencyMojoTestCase;
 import org.apache.maven.plugins.dependency.testUtils.DependencyArtifactStubFactory;
 import org.apache.maven.plugins.dependency.utils.markers.UnpackFileMarkerHandler;
@@ -34,10 +35,7 @@ import org.sonatype.aether.util.DefaultRepositorySystemSession;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 public class TestUnpackMojo
     extends AbstractDependencyMojoTestCase
@@ -573,6 +571,88 @@ public class TestUnpackMojo
 
         assertTrue( "unpackedFile '" + unpackedFile + "' lastModified() == " + markerLastModifiedMillis
                 + ": should be different", markerLastModifiedMillis != unpackedFileLastModifiedMillis );
+    }
+
+    public void testNotOverwriteFiles()
+            throws MojoExecutionException, InterruptedException, IOException, MojoFailureException
+    {
+        stubFactory.setCreateFiles( true );
+        Artifact artifact = stubFactory.getSnapshotArtifact();
+        artifact.getFile().setLastModified( System.currentTimeMillis() - 2000 );
+
+        ArtifactItem item = new ArtifactItem( artifact );
+
+        List<ArtifactItem> list = new ArrayList<>(Collections.singleton(item));
+        mojo.setArtifactItems(list);
+
+        Set<Artifact> artifacts = new HashSet<>( Collections.singleton( artifact ) );
+        mojo.getProject().setArtifacts( artifacts );
+        mojo.getProject().setDependencyArtifacts( artifacts );
+
+        File manifest = createExistingManifestFile();
+
+        mojo.overwriteFiles = false;
+        mojo.execute();
+
+        long time = setLastModified( manifest );
+        System.out.println("@@@@@@@@@@@@@@@@@@@@@@");
+        System.out.println("time: " + time + "   " + "last modified: " + manifest.lastModified());
+
+        mojo.execute();
+        mojo.execute();
+
+        System.out.println("@@@@@@@@@@@@@@@@@@@@@@");
+        System.out.println("time: " + time + "   " + "last modified: " + manifest.lastModified());
+
+        assertTrue( time == manifest.lastModified() );
+
+        File unpackedFile = getUnpackedFile( item );
+        assertTrue( unpackedFile.exists() );
+    }
+
+    public void testOverwriteFiles()
+            throws MojoExecutionException, InterruptedException, IOException, MojoFailureException
+    {
+        stubFactory.setCreateFiles( true );
+        Artifact artifact = stubFactory.getSnapshotArtifact();
+        artifact.getFile().setLastModified( System.currentTimeMillis() - 2000 );
+
+        ArtifactItem item = new ArtifactItem( artifact );
+
+        List<ArtifactItem> list = new ArrayList<>(Collections.singleton(item));
+        mojo.setArtifactItems(list);
+
+        File manifest = createExistingManifestFile();
+
+        long time = setLastModified( manifest );
+
+        mojo.overwriteFiles = true;
+        mojo.execute();
+
+        assertTrue( time != manifest.lastModified() );
+
+        File unpackedFile = getUnpackedFile( item );
+        assertTrue( unpackedFile.exists() );
+    }
+
+    private File createExistingManifestFile() throws IOException
+    {
+        File metaInf = new File( mojo.getOutputDirectory(), "META-INF" );
+        assertTrue( metaInf.mkdirs() );
+        File manifest = new File( metaInf, "MANIFEST.MF" );
+        manifest.createNewFile();
+        assertTrue( manifest.exists() );
+        return manifest;
+    }
+
+    private long setLastModified( final File unpackedFile )
+    {
+        long time = System.currentTimeMillis();
+        time = time - ( time % 1000 );
+        unpackedFile.setLastModified( time );
+
+        assertEquals( time, unpackedFile.lastModified() );
+        return time;
     }
 
     public void assertUnpacked( ArtifactItem item, boolean overWrite )
